@@ -32,9 +32,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-gray-950 text-gray-100 min-h-screen">
         <nav className="border-b border-gray-800 bg-gray-900 p-4 mb-6">
           <div className="max-w-4xl mx-auto flex justify-between items-center">
-            <Link href="/" className="font-bold text-xl text-white">
-              ForumApp
-            </Link>
+            <div className="flex items-center gap-6">
+              <Link href="/" className="font-bold text-xl text-white">
+                ForumApp
+              </Link>
+              <Link href="/tasks" className="text-sm text-gray-400 hover:text-white transition-colors">
+                Tasks
+              </Link>
+            </div>
             <div>
               {user ? (
                 <div className="flex items-center gap-3">
