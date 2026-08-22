@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function Home() {
   const [posts, setPosts] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,6 +22,12 @@ export default function Home() {
     fetchPosts();
   }, []);
 
+  const filteredPosts = posts.filter(
+    (post) =>
+      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -31,7 +38,7 @@ export default function Home() {
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Hamjamiyat Savollari</h1>
           <p className="text-gray-400 text-sm mt-1">Dasturlash va texnologiyaga oid savol-javoblar</p>
@@ -44,13 +51,26 @@ export default function Home() {
         </Link>
       </div>
 
+      {/* Search Input Bar */}
+      <div className="mb-8">
+        <input
+          type="text"
+          placeholder="Savollarni qidirish (sarlavha yoki matn bo'yicha)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full p-3 bg-gray-900 border border-gray-800 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+        />
+      </div>
+
       <div className="space-y-4">
-        {posts.length === 0 ? (
+        {filteredPosts.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed rounded-xl border-gray-800">
-            <p className="text-gray-400 font-medium">Hali hech qanday savol berilmagan.</p>
+            <p className="text-gray-400 font-medium">
+              {searchQuery ? "Qidiruvga mos savollar topilmadi." : "Hali hech qanday savol berilmagan."}
+            </p>
           </div>
         ) : (
-          posts.map((post) => (
+          filteredPosts.map((post) => (
             <div
               key={post.id}
               className="p-5 bg-gray-900 border border-gray-800 rounded-xl shadow-sm hover:border-gray-700 transition-all flex justify-between items-start gap-4"
