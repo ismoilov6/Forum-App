@@ -38,7 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div>
               {user ? (
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400">{user.email}</span>
+                  <Link href="/profile" className="text-xs text-gray-300 hover:text-white underline">
+                    {user.email}
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="bg-red-600 hover:bg-red-700 text-white font-medium px-3 py-1.5 rounded-lg text-sm transition-all"
