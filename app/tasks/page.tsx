@@ -9,6 +9,8 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [priority, setPriority] = useState("low");
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -39,13 +41,23 @@ export default function TasksPage() {
 
     const { data, error } = await supabase
       .from("tasks")
-      .insert([{ title, description, user_id: user.id }])
+      .insert([
+        {
+          title,
+          description,
+          due_date: dueDate || null,
+          priority,
+          user_id: user.id,
+        },
+      ])
       .select();
 
     if (!error && data) {
       setTasks([data[0], ...tasks]);
       setTitle("");
       setDescription("");
+      setDueDate("");
+      setPriority("low");
     } else {
       alert("Xatolik: " + error?.message);
     }
@@ -112,9 +124,35 @@ export default function TasksPage() {
           onChange={(e) => setDescription(e.target.value)}
           className="w-full p-2.5 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 h-20"
         />
+
+        <div className="flex flex-wrap gap-4 items-center pt-1">
+          <div>
+            <label className="block text-[11px] text-gray-400 mb-1">Muddati (Deadline)</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="p-2 bg-gray-950 border border-gray-800 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] text-gray-400 mb-1">Muhimlik darajasi</label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="p-2 bg-gray-950 border border-gray-800 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
+            >
+              <option value="low">Past (Low)</option>
+              <option value="medium">O'rta (Medium)</option>
+              <option value="high">Yuqori (High)</option>
+            </select>
+          </div>
+        </div>
+
         <button
           type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors mt-2"
         >
           + Vazifa qo'shish
         </button>
@@ -132,10 +170,27 @@ export default function TasksPage() {
               className="p-4 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-between gap-4"
             >
               <div className="flex-1">
-                <h3 className={`font-semibold text-sm ${task.status === "done" ? "line-through text-gray-500" : "text-white"}`}>
-                  {task.title}
-                </h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className={`font-semibold text-sm ${task.status === "done" ? "line-through text-gray-500" : "text-white"}`}>
+                    {task.title}
+                  </h3>
+                  {task.priority === "high" && (
+                    <span className="text-[10px] bg-red-900/50 text-red-300 border border-red-800 px-1.5 py-0.5 rounded">
+                      High
+                    </span>
+                  )}
+                  {task.priority === "medium" && (
+                    <span className="text-[10px] bg-yellow-900/50 text-yellow-300 border border-yellow-800 px-1.5 py-0.5 rounded">
+                      Medium
+                    </span>
+                  )}
+                </div>
                 {task.description && <p className="text-xs text-gray-400 mt-1">{task.description}</p>}
+                {task.due_date && (
+                  <div className="text-[11px] text-blue-400 mt-2">
+                    Muddat: {new Date(task.due_date).toLocaleDateString("uz-UZ")}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-3">
