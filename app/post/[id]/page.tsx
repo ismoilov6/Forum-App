@@ -1,34 +1,38 @@
 "use client";
-export const dynamic = "force-dynamic";
 
-import { useState, useEffect, use } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 
-export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function PostDetailPage() {
+  const { id } = useParams();
   const [post, setPost] = useState<any>(null);
   const [answers, setAnswers] = useState<any[]>([]);
   const [newAnswer, setNewAnswer] = useState("");
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) setUser(session.user);
+      setUser(session?.user ?? null);
 
-      const { data: postData } = await supabase.from("posts").select("*").eq("id", id).single();
+      // Savolni olib kelish
+      const { data: postData } = await supabase
+        .from("posts")
+        .select(`*, profiles(email)`)
+        .eq("id", id)
+        .single();
       if (postData) setPost(postData);
 
+      // Javoblarni olib kelish
       const { data: answersData } = await supabase
         .from("answers")
-        .select("*")
+        .select(`*, profiles(email)`)
         .eq("post_id", id)
         .order("created_at", { ascending: true });
       if (answersData) setAnswers(answersData);
-
-      setLoading(false);
     }
     fetchData();
   }, [id]);
@@ -36,100 +40,87 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const handleAddAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert("Javob yozish uchun avval login qiling!");
+      alert("Javob yozish uchun tizimga kiring!");
       return;
     }
 
-    const { data, error } = await supabase
-      .from("answers")
-      .insert([{ post_id: id, content: newAnswer, user_id: user.id }])
-      .select();
+    const { error } = await supabase.from("answers").insert([
+      {
+        content: newAnswer,
+        post_id: id,
+        user_id: user.id,
+      },
+    ]);
 
-    if (!error && data) {
-      setAnswers([...answers, data[0]]);
+    if (!error) {
       setNewAnswer("");
-    } else {
-      alert("Xatolik: " + error?.message);
+      window.location.reload(); // Sahifani yangilash
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!post) {
-    return (
-      <div className="text-center py-12 text-gray-400">
-        Savol topilmadi. <Link href="/" className="text-blue-400 underline">Bosh sahifaga qaytish</Link>
-      </div>
-    );
-  }
+  if (!post) return <div className="text-center text-white mt-10">Yuklanmoqda...</div>;
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6">
-      <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors mb-4 inline-block">
-        ← Barcha savollarga qaytish
+    <main className="max-w-3xl mx-auto px-4 py-8">
+      <Link href="/" className="text-sm text-blue-400 hover:underline mb-6 inline-block">
+        ← Bosh sahifaga qaytish
       </Link>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-white mb-3 leading-snug">{post.title}</h1>
-        <p className="text-gray-300 whitespace-pre-line leading-relaxed text-sm">{post.content}</p>
-        <div className="text-xs text-gray-500 mt-4 border-t border-gray-800 pt-3">
-          Chop etilgan vaqti: {new Date(post.created_at).toLocaleDateString("uz-UZ")}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
+        <h1 className="text-2xl font-bold text-white mb-2">{post.title}</h1>
+        <div className="text-xs text-gray-500 mb-6">
+          Muallif: {post.profiles?.email || "Noma'lum"} • {new Date(post.created_at).toLocaleDateString('uz-UZ')}
+        </div>
+        
+        {/* ReactMarkdown orqali rasm va matnni formatlash */}
+        <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+          <ReactMarkdown
+            components={{
+              img: ({node, ...props}) => <img {...props} className="max-w-full h-auto rounded-lg my-4 border border-gray-700" alt="post image" />,
+              a: ({node, ...props}) => <a {...props} className="text-blue-400 hover:underline" target="_blank" />,
+              p: ({node, ...props}) => <p {...props} className="mb-4" />
+            }}
+          >
+            {post.content}
+          </ReactMarkdown>
         </div>
       </div>
 
-      <section>
-        <h2 className="text-lg font-bold text-white mb-4">Javoblar ({answers.length})</h2>
-
-        <div className="space-y-3 mb-8">
-          {answers.length === 0 ? (
-            <div className="p-4 bg-gray-900/50 border border-gray-800 rounded-lg text-gray-400 text-sm">
-              Hali javoblar yo‘q. Birinchi bo‘lib javob bering!
-            </div>
-          ) : (
-            answers.map((ans) => (
-              <div key={ans.id} className="p-4 bg-gray-900 border border-gray-800 rounded-lg">
-                <p className="text-gray-200 text-sm whitespace-pre-line leading-relaxed">{ans.content}</p>
-                <div className="text-[11px] text-gray-500 mt-2">
-                  {new Date(ans.created_at).toLocaleDateString("uz-UZ")}
-                </div>
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-white mb-4">Javoblar ({answers.length})</h2>
+        <div className="space-y-4">
+          {answers.map((answer) => (
+            <div key={answer.id} className="bg-gray-900/50 border border-gray-800 rounded-lg p-4">
+              <p className="text-sm text-gray-300">{answer.content}</p>
+              <div className="text-[11px] text-gray-500 mt-2">
+                {answer.profiles?.email || "Noma'lum"} • {new Date(answer.created_at).toLocaleTimeString('uz-UZ')}
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
+      </div>
 
-        {user ? (
-          <form onSubmit={handleAddAnswer} className="space-y-3 bg-gray-900 border border-gray-800 p-4 rounded-xl">
-            <h3 className="text-sm font-semibold text-gray-200">Javobingizni yozing</h3>
-            <textarea
-              placeholder="Fikr yoki yechimingizni ulashing..."
-              value={newAnswer}
-              onChange={(e) => setNewAnswer(e.target.value)}
-              className="w-full p-3 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 transition-colors h-28"
-              required
-            />
-            <button
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
-            >
-              Javobni chop etish
-            </button>
-          </form>
-        ) : (
-          <div className="p-4 bg-gray-900 border border-gray-800 rounded-xl text-center text-sm text-gray-400">
-            Javob berish uchun iltimos{" "}
-            <Link href="/login" className="text-blue-400 underline hover:text-blue-300">
-              tizimga kiring
-            </Link>
-            .
-          </div>
-        )}
-      </section>
+      {user ? (
+        <form onSubmit={handleAddAnswer} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <textarea
+            value={newAnswer}
+            onChange={(e) => setNewAnswer(e.target.value)}
+            className="w-full p-3 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 h-24 mb-3"
+            placeholder="O'z fikringiz yoki javobingizni yozing..."
+            required
+          />
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm transition-colors">
+            Javob qoldirish
+          </button>
+        </form>
+      ) : (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+          <p className="text-sm text-gray-400 mb-2">Javob yozish uchun ro'yxatdan o'ting</p>
+          <Link href="/login" className="inline-block bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+            Tizimga kirish
+          </Link>
+        </div>
+      )}
     </main>
   );
 }
